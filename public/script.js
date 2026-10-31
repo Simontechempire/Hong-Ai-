@@ -1,971 +1,950 @@
-// =====================================
-// HONG AI - FRONTEND JAVASCRIPT
-// =====================================
+const $ = id => document.getElementById(id);
 
-const $ = (id) => document.getElementById(id);
-
-
-// =====================================
-// APP STATE
-// =====================================
+const STORAGE_KEY = "hong_ai_conversations_v2";
+const SETTINGS_KEY = "hong_ai_settings_v2";
 
 const state = {
-  chats: JSON.parse(
-    localStorage.getItem("hongai_chats") || "[]"
-  ),
-
-  activeId: null,
-
+  chats: [],
+  activeChat: null,
   image: null,
-
+  imageUrl: null,
   busy: false,
-
   recorder: null,
-
-  chunks: []
+  audioChunks: [],
+  recording: false
 };
 
+const welcome = $("welcome");
+const messagesElement = $("messages");
+const chatScroll = $("chatScroll");
+const messageInput = $("messageInput");
+const sendButton = $("sendButton");
+const imageInput = $("imageInput");
+const attachmentPreview = $("attachmentPreview");
+const typingIndicator = $("typingIndicator");
 
-// =====================================
-// SETTINGS
-// =====================================
-
-const settings = JSON.parse(
-  localStorage.getItem("hongai_settings") || "{}"
-);
-
-$("personality").value =
-  settings.personality || "friendly";
-
-$("customInstructions").value =
-  settings.customInstructions || "";
-
-
-// =====================================
-// SAVE CHAT HISTORY
-// =====================================
+function makeId() {
+  return crypto.randomUUID
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
 
 function saveChats() {
+  try {
+    const safeChats = state.chats.map(chat => ({
+      ...chat,
+      messages: chat.messages.map(message => ({
+        role: message.role,
+        content: message.content,
+        imageName: message.imageName || null
+      }))
+    }));
 
-  localStorage.setItem(
-    "hongai_chats",
-    JSON.stringify(state.chats)
-  );
-
-  renderHistory();
-
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(safeChats));
+  } catch (error) {
+    console.error("History storage error:", error);
+  }
 }
 
+function loadChats() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
 
-// =====================================
-// GET ACTIVE CHAT
-// =====================================
+    state.chats = Array.isArray(saved)
+      ? saved.filter(chat => chat && Array.isArray(chat.messages))
+      : [];
 
-function activeChat() {
+  } catch {
+    state.chats = [];
+  }
 
-  return state.chats.find(
-    chat => chat.id === state.activeId
-  );
-
+  updateHistory();
 }
 
+function getSettings() {
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
 
-// =====================================
-// CREATE NEW CHAT
-// =====================================
+function saveSettings() {
+  const settings = {
+    personality: $("personality").value,
+    customInstructions: $("customInstructions").value.trim()
+  };
 
-function newChat() {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 
+  closeSettings();
+
+  showToast("Settings saved");
+}
+
+function loadSettings() {
+  const settings = getSettings();
+
+  $("personality").value = settings.personality || "balanced";
+
+  $("customInstructions").value =
+    settings.customInstructions || "";
+}
+
+/* CHAT MANAGEMENT */
+
+function createChat() {
   const chat = {
-
-    id: crypto.randomUUID(),
-
+    id: makeId(),
     title: "New conversation",
-
     messages: [],
-
-    updated: Date.now()
-
+    createdAt: Date.now()
   };
 
   state.chats.unshift(chat);
-
-  state.activeId = chat.id;
+  state.activeChat = chat.id;
 
   saveChats();
-
+  updateHistory();
   renderMessages();
 
-  closeSidebar();
-
+  return chat;
 }
 
-
-// =====================================
-// SELECT CHAT
-// =====================================
+function getActiveChat() {
+  return state.chats.find(
+    chat => chat.id === state.activeChat
+  );
+}
 
 function selectChat(id) {
+  state.activeChat = id;
 
-  state.activeId = id;
-
+  clearAttachment();
   renderMessages();
-
-  renderHistory();
+  updateHistory();
 
   closeSidebar();
-
 }
 
+function deleteChat(id) {
+  state.chats = state.chats.filter(chat => chat.id !== id);
 
-// =====================================
-// DISPLAY CHAT HISTORY
-// =====================================
-
-function renderHistory() {
-
-  const list = $("historyList");
-
-  list.replaceChildren();
-
-  state.chats
-    .sort((a, b) => b.updated - a.updated)
-    .forEach(chat => {
-
-      const button = document.createElement("button");
-
-      button.className =
-        "history-item" +
-        (chat.id === state.activeId ? " active" : "");
-
-      button.textContent =
-        chat.title || "New conversation";
-
-      button.title =
-        chat.title || "New conversation";
-
-      button.addEventListener("click", () => {
-
-        selectChat(chat.id);
-
-      });
-
-      list.append(button);
-
-    });
-
-}
-
-
-// =====================================
-// DISPLAY MESSAGES
-// =====================================
-
-function renderMessages() {
-
-  const chat = activeChat();
-
-  const messages = $("messages");
-
-  messages.replaceChildren();
-
-  $("welcome").style.display =
-    chat && chat.messages.length
-      ? "none"
-      : "block";
-
-  if (!chat) return;
-
-  for (const item of chat.messages) {
-
-    const row = document.createElement("div");
-
-    row.className = `message ${item.role}`;
-
-    const avatar = document.createElement("div");
-
-    avatar.className = "message-avatar";
-
-    avatar.textContent =
-      item.role === "user" ? "Y" : "H";
-
-    const body = document.createElement("div");
-
-    const bubble = document.createElement("div");
-
-    bubble.className = "bubble";
-
-    const text = document.createElement("div");
-
-    text.textContent = item.content;
-
-    bubble.append(text);
-
-    const meta = document.createElement("div");
-
-    meta.className = "message-meta";
-
-    meta.textContent =
-      item.role === "user"
-        ? "YOU"
-        : "HONG AI";
-
-    body.append(bubble, meta);
-
-    row.append(avatar, body);
-
-    messages.append(row);
-
+  if (state.activeChat === id) {
+    state.activeChat = null;
   }
-
-  $("chatArea").scrollTop =
-    $("chatArea").scrollHeight;
-
-}
-
-
-// =====================================
-// ADD MESSAGE
-// =====================================
-
-function addMessage(role, content) {
-
-  const chat = activeChat();
-
-  if (!chat) return;
-
-  chat.messages.push({
-
-    role,
-
-    content
-
-  });
-
-  if (
-    role === "user" &&
-    chat.title === "New conversation"
-  ) {
-
-    chat.title = (
-      content || "New conversation"
-    ).slice(0, 34);
-
-  }
-
-  chat.updated = Date.now();
 
   saveChats();
+  updateHistory();
 
-  renderMessages();
-
+  if (!state.activeChat) {
+    if (state.chats.length) {
+      selectChat(state.chats[0].id);
+    } else {
+      createChat();
+    }
+  } else {
+    renderMessages();
+  }
 }
 
+function updateHistory() {
+  const list = $("historyList");
 
-// =====================================
-// NOTIFICATION
-// =====================================
+  list.innerHTML = "";
 
-function toast(message) {
+  $("historyCount").textContent = state.chats.length;
 
-  const el = $("toast");
+  if (!state.chats.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty-history";
+    empty.textContent = "Your conversations will appear here.";
+    list.appendChild(empty);
+    return;
+  }
 
-  el.textContent = message;
+  state.chats.forEach(chat => {
+    const item = document.createElement("div");
 
-  el.classList.add("show");
+    item.className =
+      "history-item" +
+      (chat.id === state.activeChat ? " active" : "");
 
-  clearTimeout(toast.timer);
+    const icon = document.createElement("span");
+    icon.textContent = "◷";
 
-  toast.timer = setTimeout(() => {
+    const title = document.createElement("span");
+    title.className = "history-item-title";
+    title.textContent = chat.title || "New conversation";
 
-    el.classList.remove("show");
+    const remove = document.createElement("button");
+    remove.className = "delete-chat";
+    remove.textContent = "×";
+    remove.title = "Delete conversation";
 
-  }, 2800);
+    remove.addEventListener("click", event => {
+      event.stopPropagation();
 
+      if (confirm("Delete this conversation?")) {
+        deleteChat(chat.id);
+      }
+    });
+
+    item.append(icon, title, remove);
+
+    item.addEventListener("click", () => {
+      selectChat(chat.id);
+    });
+
+    list.appendChild(item);
+  });
 }
 
+/* MESSAGE DISPLAY */
 
-// =====================================
-// BUSY STATE
-// =====================================
-
-function setBusy(value) {
-
-  state.busy = value;
-
-  $("sendBtn").disabled = value;
-
-  $("micBtn").disabled = value;
-
-  $("sendBtn").textContent =
-    value ? "…" : "↑";
-
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[character]);
 }
 
+function formatMarkdown(text) {
+  let safe = escapeHTML(text);
 
-// =====================================
-// SIDEBAR
-// =====================================
+  const codeBlocks = [];
 
-function closeSidebar() {
+  safe = safe.replace(
+    /```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g,
+    (match, language, code) => {
+      const index = codeBlocks.length;
 
-  $("sidebar").classList.remove("open");
+      codeBlocks.push({
+        language: language || "code",
+        code: code.replace(/\n$/, "")
+      });
 
+      return `%%CODE_BLOCK_${index}%%`;
+    }
+  );
+
+  safe = safe.replace(
+    /`([^`\n]+)`/g,
+    "<code>$1</code>"
+  );
+
+  safe = safe.replace(
+    /\*\*(.*?)\*\*/g,
+    "<strong>$1</strong>"
+  );
+
+  safe = safe.replace(
+    /^### (.+)$/gm,
+    "<h3>$1</h3>"
+  );
+
+  safe = safe.replace(
+    /^## (.+)$/gm,
+    "<h2>$1</h2>"
+  );
+
+  safe = safe.replace(
+    /^# (.+)$/gm,
+    "<h1>$1</h1>"
+  );
+
+  safe = safe.replace(
+    /^\s*[-*] (.+)$/gm,
+    "• $1"
+  );
+
+  safe = safe.replace(
+    /\n/g,
+    "<br>"
+  );
+
+  codeBlocks.forEach((block, index) => {
+    const html = `
+      <div class="code-block">
+        <div class="code-header">
+          <span>${escapeHTML(block.language)}</span>
+          <button class="copy-code" type="button">Copy code</button>
+        </div>
+        <pre><code>${escapeHTML(block.code)}</code></pre>
+      </div>
+    `;
+
+    safe = safe.replace(`%%CODE_BLOCK_${index}%%`, html);
+  });
+
+  return safe;
 }
 
+function createMessageElement(message, index, chatId) {
+  const row = document.createElement("article");
 
-// =====================================
-// AI THINKING INDICATOR
-// =====================================
-
-function showTyping() {
-
-  const row = document.createElement("div");
-
-  row.className = "message assistant";
-
-  row.id = "typingRow";
+  row.className = `message ${message.role}`;
 
   const avatar = document.createElement("div");
-
   avatar.className = "message-avatar";
+  avatar.textContent = message.role === "assistant" ? "H" : "U";
 
-  avatar.textContent = "H";
+  const body = document.createElement("div");
+  body.className = "message-body";
 
-  const bubble = document.createElement("div");
+  if (message.imageUrl) {
+    const image = document.createElement("img");
 
-  bubble.className = "bubble typing";
+    image.className = "message-image";
+    image.src = message.imageUrl;
+    image.alt = message.imageName || "Uploaded image";
 
-  bubble.textContent = "HONG AI is thinking…";
+    body.appendChild(image);
+  } else if (message.imageName && !message.imageUrl) {
+    const note = document.createElement("p");
+    note.className = "message-text";
+    note.textContent = `Image attached: ${message.imageName}`;
+    body.appendChild(note);
+  }
 
-  row.append(avatar, bubble);
+  const content = document.createElement("div");
+  content.className = "message-text";
 
-  $("messages").append(row);
+  content.innerHTML = formatMarkdown(message.content || "");
 
-  $("chatArea").scrollTop =
-    $("chatArea").scrollHeight;
+  body.appendChild(content);
 
+  const actions = document.createElement("div");
+  actions.className = "message-actions";
+
+  if (message.role === "assistant") {
+    const copy = document.createElement("button");
+
+    copy.className = "message-action";
+    copy.textContent = "Copy";
+
+    copy.addEventListener("click", () => {
+      copyText(message.content || "");
+      copy.textContent = "Copied";
+
+      setTimeout(() => {
+        copy.textContent = "Copy";
+      }, 1200);
+    });
+
+    const speak = document.createElement("button");
+
+    speak.className = "message-action";
+    speak.textContent = "Listen";
+
+    speak.addEventListener("click", () => {
+      speakText(message.content || "");
+    });
+
+    actions.append(copy, speak);
+  }
+
+  if (message.role === "user" && message.imageUrl) {
+    const download = document.createElement("button");
+
+    download.className = "message-action";
+    download.textContent = "Download image";
+
+    download.addEventListener("click", () => {
+      downloadImage(
+        message.imageUrl,
+        message.imageName || "hong-ai-image"
+      );
+    });
+
+    actions.appendChild(download);
+  }
+
+  if (actions.children.length) {
+    body.appendChild(actions);
+  }
+
+  row.append(avatar, body);
+
+  return row;
 }
 
+function renderMessages() {
+  messagesElement.innerHTML = "";
 
-// =====================================
-// SEND MESSAGE TO GROQ
-// =====================================
+  const chat = getActiveChat();
+
+  const hasMessages = chat && chat.messages.length > 0;
+
+  welcome.classList.toggle("hidden", Boolean(hasMessages));
+
+  if (!chat) return;
+
+  chat.messages.forEach((message, index) => {
+    messagesElement.appendChild(
+      createMessageElement(message, index, chat.id)
+    );
+  });
+
+  scrollToBottom();
+}
+
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    chatScroll.scrollTop = chatScroll.scrollHeight;
+  });
+}
+
+/* COPY AND DOWNLOAD */
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard");
+  } catch {
+    const area = document.createElement("textarea");
+
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+
+    document.execCommand("copy");
+    area.remove();
+
+    showToast("Copied");
+  }
+}
+
+function downloadImage(url, filename) {
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+/* IMAGE ATTACHMENT */
+
+function showAttachment(file) {
+  if (!file) return;
+
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif"
+  ];
+
+  if (!allowed.includes(file.type)) {
+    showToast("Use JPG, PNG, WEBP or GIF images.");
+    return;
+  }
+
+  if (file.size > 14 * 1024 * 1024) {
+    showToast("Image must be smaller than 14 MB.");
+    return;
+  }
+
+  clearAttachment();
+
+  state.image = file;
+  state.imageUrl = URL.createObjectURL(file);
+
+  $("attachmentName").textContent = file.name;
+
+  $("attachmentSize").textContent =
+    `${(file.size / 1024 / 1024).toFixed(2)} MB • Ready`;
+
+  const thumb = $("attachmentThumb");
+  thumb.innerHTML = "";
+
+  const img = document.createElement("img");
+  img.src = state.imageUrl;
+  img.alt = "Image preview";
+
+  thumb.appendChild(img);
+
+  attachmentPreview.classList.remove("hidden");
+}
+
+function clearAttachment() {
+  if (state.imageUrl) {
+    URL.revokeObjectURL(state.imageUrl);
+  }
+
+  state.image = null;
+  state.imageUrl = null;
+
+  imageInput.value = "";
+  attachmentPreview.classList.add("hidden");
+  $("attachmentThumb").textContent = "▧";
+}
+
+/* AI CHAT */
+
+function setBusy(value) {
+  state.busy = value;
+  sendButton.disabled = value;
+  messageInput.disabled = value;
+
+  typingIndicator.classList.add("hidden");
+
+  sendButton.textContent = value ? "…" : "↑";
+}
+
+function getSettingsForRequest() {
+  const settings = getSettings();
+
+  return {
+    personality: settings.personality || "balanced",
+    customInstructions: settings.customInstructions || ""
+  };
+}
 
 async function sendMessage() {
-
   if (state.busy) return;
 
-  const text =
-    $("messageInput").value.trim();
+  const text = messageInput.value.trim();
+  const image = state.image;
+  const imageUrl = state.imageUrl;
 
-  if (!text && !state.image) return;
+  if (!text && !image) return;
 
-  if (!activeChat()) {
+  let chat = getActiveChat();
 
-    newChat();
-
+  if (!chat) {
+    chat = createChat();
   }
 
-  const imageFile = state.image;
+  const userMessage = {
+    role: "user",
+    content: text,
+    imageName: image ? image.name : null,
+    imageUrl: imageUrl || null
+  };
 
-  const userText =
-    text || "Please describe this image.";
+  chat.messages.push(userMessage);
 
-  addMessage(
-    "user",
-    imageFile
-      ? `${userText}\n[Image attached: ${imageFile.name}]`
-      : userText
+  if (chat.messages.length === 1) {
+    chat.title = text
+      ? text.slice(0, 38)
+      : `Image: ${image.name.slice(0, 25)}`;
+  }
+
+  const imageToSend = image;
+
+  clearAttachment();
+
+  messageInput.value = "";
+  autoResize();
+
+  saveChats();
+  updateHistory();
+  renderMessages();
+
+  const assistantMessage = {
+    role: "assistant",
+    content: ""
+  };
+
+  chat.messages.push(assistantMessage);
+
+  const assistantElement = createMessageElement(
+    assistantMessage,
+    chat.messages.length - 1,
+    chat.id
   );
 
-  $("messageInput").value = "";
-
-  $("messageInput").style.height = "auto";
-
-  clearImage();
+  messagesElement.appendChild(assistantElement);
 
   setBusy(true);
-
-  showTyping();
-
-  const chat = activeChat();
-
-  const history = chat.messages
-
-    .filter(
-      (message, index) =>
-        index < chat.messages.length - 1
-    )
-
-    .slice(-20)
-
-    .map(message => ({
-
-      role: message.role,
-
-      content: message.content
-
-    }));
-
-
-  // Prepare request
-
-  const form = new FormData();
-
-  form.append("message", text);
-
-  form.append(
-    "history",
-    JSON.stringify(history)
-  );
-
-  form.append(
-    "personality",
-    $("personality").value
-  );
-
-  form.append(
-    "customInstructions",
-    $("customInstructions").value
-  );
-
-  if (imageFile) {
-
-    form.append("image", imageFile);
-
-  }
-
-
-  // Send request
+  scrollToBottom();
 
   try {
+    const form = new FormData();
 
-    const response = await fetch(
-      "/api/chat",
-      {
-        method: "POST",
-        body: form
-      }
+    form.append("message", text);
+
+    form.append(
+      "history",
+      JSON.stringify(
+        chat.messages.slice(0, -2).map(message => ({
+          role: message.role,
+          content: message.content
+        }))
+      )
     );
 
-    const data = await response.json();
+    const settings = getSettingsForRequest();
 
-    if (!response.ok) {
+    form.append("personality", settings.personality);
+    form.append("customInstructions", settings.customInstructions);
 
-      throw new Error(
-        data.error || "Request failed."
-      );
-
+    if (imageToSend) {
+      form.append("image", imageToSend, imageToSend.name);
     }
 
-    addMessage(
-      "assistant",
-      data.answer
-    );
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      body: form
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}));
+
+      throw new Error(
+        result.error || `Server error (${response.status})`
+      );
+    }
+
+    if (!response.body) {
+      throw new Error("Streaming is not supported by this browser.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    let buffer = "";
+    let finished = false;
+
+    while (!finished) {
+      const { value, done } = await reader.read();
+
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() || "";
+
+      for (const event of events) {
+        const line = event
+          .split("\n")
+          .find(item => item.startsWith("data: "));
+
+        if (!line) continue;
+
+        let data;
+
+        try {
+          data = JSON.parse(line.slice(6));
+        } catch {
+          continue;
+        }
+
+        if (data.type === "token") {
+          assistantMessage.content += data.content;
+
+          updateStreamingMessage(
+            assistantElement,
+            assistantMessage.content
+          );
+        }
+
+        if (data.type === "error") {
+          throw new Error(data.message || "AI request failed.");
+        }
+
+        if (data.type === "done") {
+          finished = true;
+        }
+      }
+    }
+
+    if (!assistantMessage.content.trim()) {
+      assistantMessage.content = "I couldn't generate a response. Please try again.";
+      updateStreamingMessage(
+        assistantElement,
+        assistantMessage.content
+      );
+    }
 
   } catch (error) {
+    console.error(error);
 
-    addMessage(
-      "assistant",
-      `Sorry, I couldn't complete that request.\n\n${error.message}`
+    assistantMessage.content =
+      `⚠️ ${error.message || "Something went wrong. Please try again."}`;
+
+    updateStreamingMessage(
+      assistantElement,
+      assistantMessage.content
     );
 
   } finally {
-
-    $("typingRow")?.remove();
-
     setBusy(false);
-
+    saveChats();
+    updateHistory();
+    scrollToBottom();
   }
-
 }
 
+function updateStreamingMessage(element, text) {
+  const content = element.querySelector(".message-text");
 
-// =====================================
-// IMAGE UPLOAD
-// =====================================
+  if (!content) return;
 
-function clearImage() {
+  content.innerHTML = formatMarkdown(text);
 
-  state.image = null;
-
-  $("imageInput").value = "";
-
-  $("attachmentPreview").hidden = true;
-
-  $("attachmentName").textContent = "";
-
+  scrollToBottom();
 }
 
+/* INPUT */
 
-$("attachBtn").addEventListener(
-  "click",
-  () => {
+function autoResize() {
+  messageInput.style.height = "auto";
 
-    $("imageInput").click();
+  messageInput.style.height =
+    Math.min(messageInput.scrollHeight, 160) + "px";
+}
 
-  }
-);
+messageInput.addEventListener("input", autoResize);
 
-
-$("imageInput").addEventListener(
-  "change",
-  (event) => {
-
-    const file = event.target.files[0];
-
-    if (!file) return;
-
-    const allowed = [
-
-      "image/jpeg",
-
-      "image/png",
-
-      "image/webp",
-
-      "image/gif"
-
-    ];
-
-    if (!allowed.includes(file.type)) {
-
-      toast("Unsupported image format.");
-
-      return;
-
-    }
-
-    if (file.size > 8 * 1024 * 1024) {
-
-      toast("Image must be smaller than 8 MB.");
-
-      return;
-
-    }
-
-    state.image = file;
-
-    $("attachmentName").textContent =
-      `Image attached: ${file.name}`;
-
-    $("attachmentPreview").hidden = false;
-
-  }
-);
-
-
-$("removeAttachment").addEventListener(
-  "click",
-  clearImage
-);
-
-
-// =====================================
-// SEND BUTTON
-// =====================================
-
-$("chatForm").addEventListener(
-  "submit",
-  (event) => {
-
+messageInput.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
-
     sendMessage();
-
   }
-);
+});
 
+sendButton.addEventListener("click", sendMessage);
 
-// =====================================
-// ENTER TO SEND
-// =====================================
+$("newChat").addEventListener("click", () => {
+  if (state.busy) return;
 
-$("messageInput").addEventListener(
-  "keydown",
-  (event) => {
+  clearAttachment();
+  createChat();
+  closeSidebar();
+  messageInput.focus();
+});
 
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
+$("attachButton").addEventListener("click", () => {
+  imageInput.click();
+});
 
-      event.preventDefault();
+imageInput.addEventListener("change", event => {
+  const file = event.target.files?.[0];
 
-      sendMessage();
+  if (file) showAttachment(file);
+});
 
-    }
+$("removeAttachment").addEventListener("click", clearAttachment);
 
+document.querySelectorAll(".suggestion-card").forEach(button => {
+  button.addEventListener("click", () => {
+    messageInput.value = button.dataset.prompt || "";
+    autoResize();
+    messageInput.focus();
+  });
+});
+
+/* VOICE INPUT */
+
+$("voiceButton").addEventListener("click", toggleRecording);
+
+async function toggleRecording() {
+  if (state.recording) {
+    state.recorder?.stop();
+    return;
   }
-);
 
-
-// =====================================
-// AUTO RESIZE TEXTAREA
-// =====================================
-
-$("messageInput").addEventListener(
-  "input",
-  () => {
-
-    const el = $("messageInput");
-
-    el.style.height = "auto";
-
-    el.style.height =
-      `${Math.min(el.scrollHeight, 150)}px`;
-
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    showToast("Voice recording is not supported by this browser.");
+    return;
   }
-);
 
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
 
-// =====================================
-// QUICK PROMPTS
-// =====================================
+    state.audioChunks = [];
 
-document
-  .querySelectorAll(".suggestion")
-  .forEach(button => {
+    const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+      ? "audio/webm"
+      : "";
 
-    button.addEventListener(
-      "click",
-      () => {
-
-        $("messageInput").value =
-          button.dataset.prompt;
-
-        $("messageInput").focus();
-
-        $("messageInput").dispatchEvent(
-          new Event("input")
-        );
-
-      }
+    state.recorder = new MediaRecorder(
+      stream,
+      mimeType ? { mimeType } : undefined
     );
 
-  });
-
-
-// =====================================
-// NEW CHAT BUTTON
-// =====================================
-
-$("newChat").addEventListener(
-  "click",
-  newChat
-);
-
-
-// =====================================
-// MOBILE SIDEBAR
-// =====================================
-
-$("openSidebar").addEventListener(
-  "click",
-  () => {
-
-    $("sidebar").classList.add("open");
-
-  }
-);
-
-
-$("closeSidebar").addEventListener(
-  "click",
-  closeSidebar
-);
-
-
-// =====================================
-// SETTINGS
-// =====================================
-
-function openSettings() {
-
-  $("settingsModal").hidden = false;
-
-}
-
-
-function closeSettings() {
-
-  $("settingsModal").hidden = true;
-
-}
-
-
-$("settingsOpen").addEventListener(
-  "click",
-  openSettings
-);
-
-
-$("settingsOpenTop").addEventListener(
-  "click",
-  openSettings
-);
-
-
-$("settingsClose").addEventListener(
-  "click",
-  closeSettings
-);
-
-
-$("settingsCancel").addEventListener(
-  "click",
-  closeSettings
-);
-
-
-$("settingsSave").addEventListener(
-  "click",
-  () => {
-
-    const data = {
-
-      personality:
-        $("personality").value,
-
-      customInstructions:
-        $("customInstructions").value.trim()
-
+    state.recorder.ondataavailable = event => {
+      if (event.data.size > 0) {
+        state.audioChunks.push(event.data);
+      }
     };
 
-    localStorage.setItem(
-      "hongai_settings",
-      JSON.stringify(data)
-    );
+    state.recorder.onstop = async () => {
+      const type = state.recorder.mimeType || "audio/webm";
 
-    closeSettings();
+      const blob = new Blob(state.audioChunks, {
+        type
+      });
 
-    toast("AI settings saved.");
+      stream.getTracks().forEach(track => track.stop());
 
+      state.recording = false;
+
+      $("voiceButton").classList.remove("recording");
+      $("voiceButton").textContent = "🎙";
+
+      await transcribeAudio(blob);
+    };
+
+    state.recorder.start();
+
+    state.recording = true;
+
+    $("voiceButton").classList.add("recording");
+    $("voiceButton").textContent = "■";
+
+    showToast("Recording started. Tap again to finish.");
+
+  } catch (error) {
+    console.error(error);
+    showToast("Microphone permission was not granted.");
   }
-);
-
-
-// =====================================
-// VOICE INPUT
-// GROQ WHISPER
-// =====================================
-
-$("micBtn").addEventListener(
-  "click",
-  async () => {
-
-    // Stop recording
-
-    if (
-      state.recorder &&
-      state.recorder.state === "recording"
-    ) {
-
-      state.recorder.stop();
-
-      $("micBtn").textContent = "🎙";
-
-      return;
-
-    }
-
-
-    // Browser support
-
-    if (
-      !navigator.mediaDevices?.getUserMedia ||
-      !window.MediaRecorder
-    ) {
-
-      toast(
-        "Voice recording is not supported in this browser."
-      );
-
-      return;
-
-    }
-
-
-    try {
-
-      const stream =
-        await navigator.mediaDevices.getUserMedia({
-          audio: true
-        });
-
-      state.chunks = [];
-
-      state.recorder =
-        new MediaRecorder(stream);
-
-
-      state.recorder.ondataavailable =
-        (event) => {
-
-          if (event.data.size) {
-
-            state.chunks.push(event.data);
-
-          }
-
-        };
-
-
-      // When recording stops
-
-      state.recorder.onstop =
-        async () => {
-
-          stream.getTracks().forEach(
-            track => track.stop()
-          );
-
-          const blob = new Blob(
-            state.chunks,
-            {
-              type: "audio/webm"
-            }
-          );
-
-          const form = new FormData();
-
-          form.append(
-            "audio",
-            blob,
-            "voice-message.webm"
-          );
-
-          toast("Transcribing your voice…");
-
-
-          try {
-
-            const response = await fetch(
-              "/api/transcribe",
-              {
-                method: "POST",
-                body: form
-              }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-
-              throw new Error(
-                data.error || "Transcription failed."
-              );
-
-            }
-
-            $("messageInput").value = [
-
-              $("messageInput").value.trim(),
-
-              data.text
-
-            ].filter(Boolean).join(" ");
-
-            $("messageInput").dispatchEvent(
-              new Event("input")
-            );
-
-            $("messageInput").focus();
-
-            toast("Voice added to your message.");
-
-          } catch (error) {
-
-            toast(error.message);
-
-          }
-
-        };
-
-
-      state.recorder.start();
-
-      $("micBtn").textContent = "■";
-
-      toast(
-        "Recording... tap the microphone again to stop."
-      );
-
-    } catch (error) {
-
-      toast(
-        "Microphone permission was not granted."
-      );
-
-    }
-
-  }
-);
-
-
-// =====================================
-// VOICE PLAYBACK
-// DOUBLE CLICK AI RESPONSE
-// =====================================
-
-$("messages").addEventListener(
-  "dblclick",
-  (event) => {
-
-    const bubble = event.target.closest(
-      ".assistant .bubble"
-    );
-
-    if (
-      !bubble ||
-      !("speechSynthesis" in window)
-    ) {
-
-      return;
-
-    }
-
-    const utterance =
-      new SpeechSynthesisUtterance(
-        bubble.innerText
-      );
-
-    utterance.rate = 1;
-
-    speechSynthesis.cancel();
-
-    speechSynthesis.speak(utterance);
-
-    toast("Reading response aloud.");
-
-  }
-);
-
-
-// =====================================
-// INITIALIZE HONG AI
-// =====================================
-
-if (!state.chats.length) {
-
-  newChat();
-
-} else {
-
-  state.activeId = state.chats[0].id;
-
-  renderHistory();
-
-  renderMessages();
-
 }
 
+async function transcribeAudio(blob) {
+  try {
+    const form = new FormData();
 
-// =====================================
-// HONG AI INITIALIZED
-// =====================================
+    form.append("audio", blob, "recording.webm");
 
-console.log(
-  "HONG AI FRONTEND INITIALIZED"
-);
+    showToast("Converting your voice to text...");
+
+    const response = await fetch("/api/transcribe", {
+      method: "POST",
+      body: form
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Transcription failed.");
+    }
+
+    if (result.text) {
+      messageInput.value =
+        `${messageInput.value} ${result.text}`.trim();
+
+      autoResize();
+      messageInput.focus();
+    }
+
+  } catch (error) {
+    showToast(error.message || "Voice transcription failed.");
+  }
+}
+
+/* VOICE OUTPUT */
+
+function speakText(text) {
+  if (!("speechSynthesis" in window)) {
+    showToast("Speech playback is not supported.");
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+
+  const speech = new SpeechSynthesisUtterance(text);
+
+  speech.rate = 1;
+  speech.pitch = 1;
+
+  window.speechSynthesis.speak(speech);
+}
+
+/* SETTINGS */
+
+function openSettings() {
+  $("settingsModal").classList.remove("hidden");
+}
+
+function closeSettings() {
+  $("settingsModal").classList.add("hidden");
+}
+
+$("settingsButton").addEventListener("click", openSettings);
+$("topSettingsButton").addEventListener("click", openSettings);
+$("closeSettings").addEventListener("click", closeSettings);
+$("saveSettings").addEventListener("click", saveSettings);
+
+$("settingsModal").addEventListener("click", event => {
+  if (event.target === $("settingsModal")) {
+    closeSettings();
+  }
+});
+
+$("clearHistory").addEventListener("click", () => {
+  if (!confirm("Delete all saved conversations?")) return;
+
+  state.chats = [];
+  state.activeChat = null;
+
+  saveChats();
+  updateHistory();
+  createChat();
+
+  showToast("Conversation history cleared.");
+});
+
+/* MOBILE SIDEBAR */
+
+function openSidebar() {
+  $("sidebar").classList.add("open");
+  $("sidebarOverlay").classList.add("show");
+}
+
+function closeSidebar() {
+  $("sidebar").classList.remove("open");
+  $("sidebarOverlay").classList.remove("show");
+}
+
+$("menuButton").addEventListener("click", openSidebar);
+$("closeSidebar").addEventListener("click", closeSidebar);
+$("sidebarOverlay").addEventListener("click", closeSidebar);
+
+$("historyButton").addEventListener("click", () => {
+  $("historyList").scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+  closeSidebar();
+});
+
+$("homeButton").addEventListener("click", () => {
+  if (!state.activeChat) {
+    createChat();
+  }
+
+  renderMessages();
+  closeSidebar();
+});
+
+/* CODE COPY */
+
+messagesElement.addEventListener("click", event => {
+  const button = event.target.closest(".copy-code");
+
+  if (!button) return;
+
+  const code = button
+    .closest(".code-block")
+    ?.querySelector("pre code")
+    ?.textContent;
+
+  if (code) {
+    copyText(code);
+    button.textContent = "Copied";
+
+    setTimeout(() => {
+     
