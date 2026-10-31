@@ -2,356 +2,361 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#090b12">
 
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+  <title>HONG AI — Your Intelligent Workspace</title>
 
-  <meta name="theme-color" content="#090b14">
+  <meta
+    name="description"
+    content="HONG AI is your intelligent workspace for conversations, coding, creativity and image understanding."
+  >
 
-  <title>HONG AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <meta name="description"
-        content="HONG AI - Your personal AI assistant">
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
 
-  <link rel="stylesheet" href="style.css">
-
-  <script src="script.js" defer></script>
+  <link rel="stylesheet" href="/style.css">
 </head>
 
 <body>
 
-<div class="app-shell">
+  <div class="app">
 
-  <!-- SIDEBAR -->
+    <!-- SIDEBAR -->
 
-  <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar">
 
-    <div class="brand-row">
+      <div class="brand">
+        <div class="brand-symbol">H</div>
 
-      <div class="brand-mark">H</div>
-
-      <div>
-        <div class="brand-name">HONG AI</div>
-        <div class="brand-sub">YOUR AI ASSISTANT</div>
-      </div>
-
-      <button class="icon-btn mobile-close"
-              id="closeSidebar">×</button>
-
-    </div>
-
-    <button class="new-chat" id="newChat">
-      <span>＋</span> New chat
-    </button>
-
-    <div class="side-label">
-      YOUR CONVERSATIONS
-    </div>
-
-    <div class="history-list" id="historyList"></div>
-
-    <div class="sidebar-bottom">
-
-      <button class="side-action" id="settingsOpen">
-        ⚙ AI settings
-      </button>
-
-      <div class="profile">
-
-        <div class="avatar">H</div>
-
-        <div>
+        <div class="brand-text">
           <strong>HONG AI</strong>
-          <small>Personal workspace</small>
+          <span>INTELLIGENCE SPACE</span>
         </div>
 
-        <span class="online-dot"></span>
-
+        <button class="icon-button close-sidebar" id="closeSidebar" aria-label="Close menu">
+          ×
+        </button>
       </div>
 
-    </div>
-
-  </aside>
-
-
-  <!-- MAIN CONTENT -->
-
-  <main class="main">
-
-    <header class="topbar">
-
-      <button class="icon-btn menu-btn"
-              id="openSidebar">☰</button>
-
-      <div class="top-title">
-
-        <span class="status-dot"></span>
-
-        HONG AI
-
-        <span class="model-tag">
-          GROQ POWERED
-        </span>
-
-      </div>
-
-      <button class="settings-top"
-              id="settingsOpenTop">
-        ⚙ Settings
+      <button class="new-chat-button" id="newChat">
+        <span>＋</span>
+        <span>New conversation</span>
       </button>
 
-    </header>
+      <div class="sidebar-label">WORKSPACE</div>
 
+      <button class="nav-item active" id="homeButton">
+        <span>⌂</span>
+        <span>Workspace</span>
+      </button>
 
-    <!-- CHAT AREA -->
+      <button class="nav-item" id="historyButton">
+        <span>◷</span>
+        <span>Conversations</span>
+      </button>
 
-    <section class="chat-area" id="chatArea">
-
-      <div class="welcome" id="welcome">
-
-        <div class="welcome-orb">
-          <span>H</span>
-          <i></i>
-        </div>
-
-        <div class="eyebrow">
-          WELCOME TO YOUR AI WORKSPACE
-        </div>
-
-        <h1>
-          Meet <span>HONG AI.</span>
-        </h1>
-
-        <p>
-          Ask questions, build ideas, write code,
-          or explore an image.
-          <br>
-          What would you like to work on today?
-        </p>
-
-        <div class="suggestions">
-
-          <button class="suggestion"
-                  data-prompt="Help me build a website with HTML, CSS and JavaScript.">
-
-            <b>⌘</b>
-
-            <span>
-              <strong>Build a website</strong>
-              <small>Plan and write code</small>
-            </span>
-
-          </button>
-
-
-          <button class="suggestion"
-                  data-prompt="Explain a difficult topic in simple steps.">
-
-            <b>✧</b>
-
-            <span>
-              <strong>Learn something</strong>
-              <small>Understand a new topic</small>
-            </span>
-
-          </button>
-
-
-          <button class="suggestion"
-                  data-prompt="Give me five creative project ideas I can build.">
-
-            <b>↗</b>
-
-            <span>
-              <strong>Explore ideas</strong>
-              <small>Brainstorm a project</small>
-            </span>
-
-          </button>
-
-        </div>
-
+      <div class="history-heading">
+        <span>RECENT CHATS</span>
+        <span id="historyCount">0</span>
       </div>
 
-
-      <div class="messages"
-           id="messages"
-           aria-live="polite">
+      <div class="history-list" id="historyList">
+        <div class="empty-history">Your conversations will appear here.</div>
       </div>
 
-    </section>
+      <div class="sidebar-bottom">
 
+        <div class="plan-card">
+          <div class="plan-icon">✦</div>
 
-    <!-- MESSAGE COMPOSER -->
+          <div>
+            <strong>HONG AI</strong>
+            <span>Personal AI workspace</span>
+          </div>
+        </div>
 
-    <footer class="composer-wrap">
+        <button class="profile-button" id="settingsButton">
+          <div class="profile-avatar">H</div>
 
-      <div class="attachment-preview"
-           id="attachmentPreview"
-           hidden>
+          <div class="profile-info">
+            <strong>My Workspace</strong>
+            <span>Personal settings</span>
+          </div>
 
-        <span id="attachmentName"></span>
-
-        <button id="removeAttachment">×</button>
-
-      </div>
-
-
-      <form class="composer" id="chatForm">
-
-        <input
-          type="file"
-          id="imageInput"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          hidden
-        >
-
-        <button class="tool-btn"
-                type="button"
-                id="attachBtn"
-                title="Attach image">
-          ＋
+          <span class="profile-arrow">⚙</span>
         </button>
+
+      </div>
+
+    </aside>
+
+    <!-- MAIN AREA -->
+
+    <main class="main">
+
+      <header class="topbar">
+
+        <button class="icon-button menu-button" id="menuButton" aria-label="Open menu">
+          ☰
+        </button>
+
+        <div class="mobile-brand">
+          <div class="mobile-brand-icon">H</div>
+          <strong>HONG AI</strong>
+        </div>
+
+        <div class="topbar-center">
+          <span class="online-dot"></span>
+          <span>HONG AI SYSTEM</span>
+          <span class="system-version">V2.0</span>
+        </div>
+
+        <button class="settings-top-button" id="topSettingsButton">
+          <span>⚙</span>
+          Settings
+        </button>
+
+      </header>
+
+      <!-- CHAT SCROLL AREA -->
+
+      <section class="chat-scroll" id="chatScroll">
+
+        <!-- WELCOME -->
+
+        <div class="welcome" id="welcome">
+
+          <div class="welcome-orbit">
+            <div class="welcome-logo">H</div>
+            <span class="orbit-dot"></span>
+          </div>
+
+          <div class="welcome-kicker">
+            YOUR IDEAS. YOUR INTELLIGENCE.
+          </div>
+
+          <h1>
+            Think beyond<br>
+            <span>the ordinary.</span>
+          </h1>
+
+          <p class="welcome-description">
+            Meet HONG AI — an intelligent space for
+            building, learning, coding and creating.
+          </p>
+
+          <div class="suggestion-grid">
+
+            <button class="suggestion-card" data-prompt="Help me build a professional website using HTML, CSS and JavaScript.">
+              <div class="suggestion-icon purple">⌘</div>
+              <div>
+                <strong>Build something</strong>
+                <span>Create websites and write code</span>
+              </div>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+
+            <button class="suggestion-card" data-prompt="Teach me an interesting technology topic step by step.">
+              <div class="suggestion-icon blue">✧</div>
+              <div>
+                <strong>Learn something</strong>
+                <span>Understand difficult topics</span>
+              </div>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+
+            <button class="suggestion-card" data-prompt="Help me brainstorm a creative technology project.">
+              <div class="suggestion-icon orange">⌁</div>
+              <div>
+                <strong>Explore ideas</strong>
+                <span>Turn ideas into real projects</span>
+              </div>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+
+            <button class="suggestion-card" data-prompt="Give me a detailed explanation of how artificial intelligence works.">
+              <div class="suggestion-icon green">◎</div>
+              <div>
+                <strong>Ask anything</strong>
+                <span>Explore questions and answers</span>
+              </div>
+              <span class="suggestion-arrow">↗</span>
+            </button>
+
+          </div>
+
+          <div class="welcome-footer">
+            <span>✦</span>
+            POWERED BY ADVANCED AI
+          </div>
+
+        </div>
+
+        <!-- MESSAGES -->
+
+        <div class="messages" id="messages"></div>
+
+        <div class="typing-indicator hidden" id="typingIndicator">
+          <div class="typing-avatar">H</div>
+          <div class="typing-content">
+            <span class="typing-dots"><i></i><i></i><i></i></span>
+            <span>HONG AI is thinking</span>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- COMPOSER -->
+
+      <section class="composer-section">
+
+        <div class="attachment-preview hidden" id="attachmentPreview">
+          <div class="attachment-thumb" id="attachmentThumb">▧</div>
+
+          <div class="attachment-details">
+            <strong id="attachmentName">Image attached</strong>
+            <span id="attachmentSize">Ready to analyse</span>
+          </div>
+
+          <button id="removeAttachment" class="remove-attachment" aria-label="Remove image">
+            ×
+          </button>
+        </div>
+
+        <div class="composer">
+
+          <div class="composer-tools">
+
+            <button
+              class="tool-button"
+              id="attachButton"
+              title="Attach image"
+              aria-label="Attach image"
+            >
+              ＋
+            </button>
+
+            <input
+              type="file"
+              id="imageInput"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              hidden
+            >
+
+          </div>
+
+          <textarea
+            id="messageInput"
+            rows="1"
+            placeholder="Message HONG AI..."
+            maxlength="12000"
+          ></textarea>
+
+          <div class="composer-actions">
+
+            <button
+              class="tool-button voice-button"
+              id="voiceButton"
+              title="Voice input"
+              aria-label="Record voice"
+            >
+              🎙
+            </button>
+
+            <button
+              class="send-button"
+              id="sendButton"
+              aria-label="Send message"
+            >
+              ↑
+            </button>
+
+          </div>
+
+        </div>
+
+        <div class="composer-note">
+          <span>HONG AI can make mistakes. Verify important information.</span>
+          <span>POWERED BY <strong>GROQ</strong> ⚡</span>
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <!-- MOBILE OVERLAY -->
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- SETTINGS MODAL -->
+
+  <div class="modal-backdrop hidden" id="settingsModal">
+
+    <div class="settings-modal">
+
+      <div class="modal-header">
+        <div>
+          <span class="modal-kicker">PERSONALISE YOUR EXPERIENCE</span>
+          <h2>HONG AI Settings</h2>
+        </div>
+
+        <button class="modal-close" id="closeSettings">×</button>
+      </div>
+
+      <div class="setting-group">
+        <label for="personality">AI personality</label>
+
+        <select id="personality">
+          <option value="balanced">Balanced assistant</option>
+          <option value="developer">Developer assistant</option>
+          <option value="teacher">Teacher</option>
+          <option value="creative">Creative assistant</option>
+          <option value="professional">Professional assistant</option>
+        </select>
+
+        <small>Choose how HONG AI responds to your messages.</small>
+      </div>
+
+      <div class="setting-group">
+        <label for="customInstructions">Custom instructions</label>
 
         <textarea
-          id="messageInput"
-          rows="1"
-          placeholder="Message HONG AI..."
-          maxlength="8000"
+          id="customInstructions"
+          rows="4"
+          maxlength="1500"
+          placeholder="Example: Explain coding answers step by step..."
         ></textarea>
 
-        <button class="tool-btn mic-btn"
-                type="button"
-                id="micBtn"
-                title="Record voice">
-          🎙
-        </button>
-
-        <button class="send-btn"
-                type="submit"
-                id="sendBtn">
-          ↑
-        </button>
-
-      </form>
-
-
-      <div class="composer-note">
-
-        <span>
-          HONG AI can make mistakes.
-          Check important information.
-        </span>
-
-        <span>Powered by Groq ⚡</span>
-
+        <small>Your instructions will be included in future AI requests.</small>
       </div>
 
-    </footer>
-
-  </main>
-
-</div>
-
-
-<!-- SETTINGS MODAL -->
-
-<div class="modal-backdrop"
-     id="settingsModal"
-     hidden>
-
-  <section class="settings-modal"
-           role="dialog"
-           aria-modal="true"
-           aria-labelledby="settingsTitle">
-
-    <div class="modal-head">
-
-      <div>
-        <div class="eyebrow">
-          PERSONALIZE YOUR EXPERIENCE
+      <div class="setting-group">
+        <label>Conversation storage</label>
+        <div class="storage-info">
+          <span>◉</span>
+          Saved locally on this device
         </div>
-
-        <h2 id="settingsTitle">AI settings</h2>
+        <small>Conversations are not synchronised across devices.</small>
       </div>
 
-      <button class="icon-btn"
-              id="settingsClose">
-        ×
-      </button>
+      <div class="modal-actions">
+        <button class="danger-button" id="clearHistory">Clear history</button>
+        <button class="save-button" id="saveSettings">Save settings</button>
+      </div>
 
     </div>
 
+  </div>
 
-    <label for="personality">
-      AI personality
-    </label>
-
-    <select id="personality">
-
-      <option value="friendly">
-        Friendly and helpful
-      </option>
-
-      <option value="professional">
-        Professional
-      </option>
-
-      <option value="concise">
-        Short and direct
-      </option>
-
-      <option value="tutor">
-        Patient tutor
-      </option>
-
-      <option value="coder">
-        Coding expert
-      </option>
-
-    </select>
-
-
-    <label for="customInstructions">
-      Custom instructions
-    </label>
-
-    <textarea
-      id="customInstructions"
-      class="custom-instructions"
-      maxlength="1200"
-      placeholder="Example: Use simple English and explain code step by step."
-    ></textarea>
-
-
-    <div class="modal-actions">
-
-      <button class="secondary-btn"
-              id="settingsCancel">
-        Cancel
-      </button>
-
-      <button class="primary-btn"
-              id="settingsSave">
-        Save settings
-      </button>
-
-    </div>
-
-    <p class="settings-hint">
-      Your settings are saved in this browser.
-      Your Groq API key stays on the server.
-    </p>
-
-  </section>
-
-</div>
-
-
-<div class="toast"
-     id="toast"
-     role="status">
-</div>
+  <script src="/script.js"></script>
 
 </body>
-      </html>
+              </html>
